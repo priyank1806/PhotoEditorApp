@@ -1,0 +1,344 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Main.java to edit this template
+ */
+package photoeditorappp;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Image;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.WritableRaster;
+import java.io.File;
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.UIManager;
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+class PhotoEditorAppp extends JFrame {
+    
+    private BufferedImage originalImage;
+    private BufferedImage editedImage;
+    private final JLabel imageLabel;
+    private JButton zoomInButton;
+    private JButton zoomOutButton;
+    private JScrollPane scrollPane;
+    private ImageIcon originalImageIcon;
+    private ImageIcon scaledImageIcon;
+    private double scaleFactor = 1.0;
+    
+    public PhotoEditorAppp(){
+        setTitle("Photo Editor App");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(800,600);
+        setLocationRelativeTo(null);
+        
+        createMenuBar();
+        imageLabel = new JLabel();
+        scrollPane = new JScrollPane(imageLabel);
+        
+        JButton grayscaleButton = new JButton("Gray Scale");
+        grayscaleButton.setBackground(Color.black);
+        grayscaleButton.setForeground(Color.cyan);
+        grayscaleButton.addActionListener(e -> applyGrayScaleFilter());
+        
+        JButton invertButton = new JButton("Invert");
+        invertButton.setBackground(Color.black);
+        invertButton.setForeground(Color.cyan);
+        invertButton.addActionListener(e -> applyInvertColorsFilter());
+        
+        JButton sepiaButton = new JButton("Sepia");
+        sepiaButton.setBackground(Color.black);
+        sepiaButton.setForeground(Color.cyan);
+        sepiaButton.addActionListener(e -> applySepiaFilter());
+        
+        JButton blurButton = new JButton("Blur");
+        blurButton.setBackground(Color.black);
+        blurButton.setForeground(Color.cyan);
+        blurButton.addActionListener(e -> applyBlurFilter());
+        
+        JButton edgedetectionButton = new JButton("Edge Detection");
+        edgedetectionButton.setBackground(Color.black);
+        edgedetectionButton.setForeground(Color.cyan);
+        edgedetectionButton.addActionListener(e -> applyEdgeDetectionFilter());
+        
+        zoomInButton = new JButton("Zoom-In");
+        zoomInButton.setBackground(Color.black);
+        zoomInButton.setForeground(Color.cyan);
+        zoomInButton.addActionListener(new ZoomInButtonListener());
+        
+        zoomOutButton = new JButton("Zoom-Out");
+        zoomOutButton.setBackground(Color.black);
+        zoomOutButton.setForeground(Color.cyan);
+        zoomOutButton.addActionListener(new ZoomOutButtonListener());
+        
+        JButton resetButton = new JButton("Reset");
+        resetButton.setBackground(Color.yellow);
+        resetButton.setForeground(Color.black);
+        resetButton.addActionListener(e -> resetImage());
+        
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(grayscaleButton);
+        buttonPanel.add(invertButton);
+        buttonPanel.add(sepiaButton);
+        buttonPanel.add(blurButton);
+        buttonPanel.add(edgedetectionButton);
+        buttonPanel.add(zoomInButton);
+        buttonPanel.add(zoomOutButton);
+        buttonPanel.add(resetButton);
+        
+        add(scrollPane, BorderLayout.CENTER);
+        add(buttonPanel, BorderLayout.SOUTH);
+        
+        setVisible(true);
+    } 
+    
+    private void createMenuBar(){
+        JMenuBar menuBar = new JMenuBar();
+        JMenu fileMenu = new JMenu("File");
+        
+        JMenuItem openItem = new JMenuItem("OPEN");
+        openItem.addActionListener(e -> openImage());
+        
+        JMenuItem saveItem = new JMenuItem("SAVE");
+        saveItem.addActionListener(e -> saveImage());
+        
+        fileMenu.add(openItem);
+        fileMenu.add(saveItem);
+        menuBar.add(fileMenu);
+        setJMenuBar(menuBar);
+    }
+        
+    private void updateImageLabel(){
+        if (editedImage != null) {
+            ImageIcon imageIcon = new ImageIcon(editedImage);
+            imageLabel.setIcon(imageIcon);
+            imageLabel.revalidate();
+        }
+    }
+        
+    private void resetImage(){
+        if(originalImage != null){
+            editedImage = copyImage(originalImage);
+            updateImageLabel();
+        }
+    }
+        
+    private BufferedImage copyImage(BufferedImage image){
+        ColorModel cm = image.getColorModel();
+        boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
+        WritableRaster raster = image.copyData(null);
+        return new BufferedImage(cm, raster, isAlphaPremultiplied, null);
+    }
+        
+    private void openImage(){
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileFilter(new FileNameExtensionFilter ("Images", "jpg", "png"));
+        
+        int result = fileChooser.showOpenDialog(this);
+        if(result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            try {
+                BufferedImage testImage = ImageIO.read(selectedFile);
+                if (testImage == null) {
+                    JOptionPane.showMessageDialog(this, "Invalid Image File Selected", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                originalImage = testImage;
+                editedImage = copyImage(originalImage);
+                updateImageLabel();
+                displayImage(); // Call displayImage method after loading the image
+            } catch(Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error Loading The Image", "Error", JOptionPane.ERROR_MESSAGE);                       
+            }
+        }                     
+    }
+        
+    private void saveImage(){
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileFilter(new FileNameExtensionFilter ("Images", "jpg", "png"));
+        
+        int result = fileChooser.showSaveDialog(this);
+        if(result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            try {
+                ImageIO.write(editedImage, "jpg", selectedFile);
+            } catch(Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error Saving The Image", "Error", JOptionPane.ERROR_MESSAGE);                       
+            }
+        }        
+    }
+        
+    private void applyGrayScaleFilter() {
+        if(originalImage != null) {
+            for(int x = 0; x < editedImage.getWidth(); x++) {
+                for(int y = 0; y < editedImage.getHeight(); y++) {
+                    int rgb = originalImage.getRGB(x, y);
+                    int gray = (int) (0.3 * ((rgb >> 16) & 0xFF) + 0.59 * ((rgb >> 8) & 0xFF) + 0.11 * (rgb & 0xFF) );
+                    editedImage.setRGB(x, y, (gray << 16) | (gray << 8) | gray);
+                }
+            }
+            updateImageLabel();
+        }
+    }
+        
+    private void applySepiaFilter() {
+        if(originalImage != null) {
+            for(int x = 0; x < editedImage.getWidth(); x++) {
+                for(int y = 0; y < editedImage.getHeight(); y++) {
+                    int rgb = editedImage.getRGB(x, y);
+                    int r = (rgb >> 16) & 0xFF;
+                    int g = (rgb >> 8) & 0xFF;
+                    int b = rgb & 0xFF;
+                    
+                    int tr = (int) (0.393 * r + 0.769 * g + 0.189 * b);
+                                        int tg = (int) (0.349 * r + 0.686 * g + 0.168 * b);
+                    int tb = (int) (0.272 * r + 0.534 * g + 0.131 * b);
+
+                    tr = Math.min(255,tr);
+                    tg = Math.min(255,tg);
+                    tb = Math.min(255,tb);
+                    
+                    editedImage.setRGB(x, y, (tr << 16) | (tg << 8) | tb);
+                }
+            }
+            updateImageLabel();
+        }
+    }
+     
+    private void applyBlurFilter() {
+        if(originalImage != null) {
+            int[][] kernel = {{1,1,1},{1,1,1},{1,1,1}};
+            int kernelSum = 9;
+            
+            for(int x = 1; x < editedImage.getWidth() - 1; x++) {
+                for(int y = 1; y < editedImage.getHeight() - 1; y++) {
+                    int r = 0, g = 0, b = 0;
+                    
+                    for(int i = -1; i <= 1; i++) {
+                        for(int j = -1; j <= 1; j++) {
+                            int rgb = originalImage.getRGB(x+i, y+i);
+                            r += ((rgb >> 16) & 0xFF) * kernel[i+1][j+1];
+                            g += ((rgb >> 8) & 0xFF) * kernel[i+1][j+1];
+                            b += (rgb & 0xFF) * kernel[i+1][j+1];
+                        }    
+                    }
+                    
+                    r /= kernelSum; 
+                    g /= kernelSum; 
+                    b /= kernelSum;
+                    
+                    int newRgb = (r << 16) | (g << 8) | b;
+                    editedImage.setRGB(x, y, newRgb);
+                }
+            }
+            updateImageLabel();
+        }
+    }
+    
+    private void applyInvertColorsFilter() {
+        if(originalImage != null) {
+            for(int x = 0; x < editedImage.getWidth(); x++) {
+                for(int y = 0; y < editedImage.getHeight(); y++) {
+                    int rgb = originalImage.getRGB(x, y);
+                    int r = 255 - ((rgb >> 16) & 0xFF);
+                    int g = 255 - ((rgb >> 8) & 0xFF);
+                    int b = 255 - (rgb & 0xFF);
+                    editedImage.setRGB(x, y, (r << 16) | (g << 8) | b);
+                }  
+            }
+            updateImageLabel();
+        }
+    }
+    
+    private void applyEdgeDetectionFilter() {
+        if(originalImage != null) {
+            int[][] sobelx = {{-1,0,1},{-2,0,2},{-1,0,1}};
+            int[][] sobely = {{1,2,1},{0,0,0},{-1,-2,-1}};
+            
+            BufferedImage grayImage = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
+            Graphics g = grayImage.getGraphics();
+            g.drawImage(originalImage, 0, 0, null);
+            g.dispose();
+            
+            for(int x = 1; x < editedImage.getWidth() - 1; x++) {
+                for(int y = 1; y < editedImage.getHeight() - 1; y++) {
+                    int gx = 0, gy = 0;
+                    
+                    for(int i = -1; i <= 1; i++) {
+                        for(int j = -1; j <= 1; j++) {
+                            int gray = grayImage.getRGB(x + i, y + j) & 0xFF;
+                            gx += gray * sobelx[i+1][j + 1];
+                            gy += gray * sobely[i+1][j + 1];
+                        }
+                    }
+                    
+                    int magnitude = (int) Math.sqrt(gx * gx + gy * gy);
+                    int newRgb = (magnitude << 16) | (magnitude << 8) | magnitude;
+                    editedImage.setRGB(x, y, newRgb);
+                }
+            }
+            updateImageLabel();
+        }
+    }
+    
+    private void displayImage(){
+        if(originalImageIcon != null){
+            int newWidth = (int) (originalImageIcon.getIconWidth() * scaleFactor);
+            int newHeight = (int) (originalImageIcon.getIconHeight() * scaleFactor);
+            Image scaledImage = originalImageIcon.getImage().getScaledInstance(newWidth, newHeight, Image.SCALE_DEFAULT);
+            scaledImageIcon = new ImageIcon(scaledImage);
+            imageLabel.setIcon(scaledImageIcon);
+            scrollPane.setViewportView(imageLabel);
+        }
+    }
+    
+    private class ZoomInButtonListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            try {
+                scaleFactor *= 1.2;
+                displayImage();
+            } catch(OutOfMemoryError error) {
+                JOptionPane.showMessageDialog(PhotoEditorAppp.this, "Maximum zoom level reached.", "Zoom Limit", JOptionPane.ERROR_MESSAGE); 
+            }
+        }
+    }
+    
+    private class ZoomOutButtonListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            try {
+                scaleFactor /= 1.2;
+                displayImage();
+            } catch(Exception ex) { 
+                JOptionPane.showMessageDialog(PhotoEditorAppp.this, "No More Zoom Out", "Error", JOptionPane.ERROR_MESSAGE); 
+            }
+        }
+    }
+    
+    public static void main(String[] args) {
+        try {
+            UIManager.setLookAndFeel(new com.formdev.flatlaf.FlatDarculaLaf());
+        } catch(Exception ex) {
+            System.out.println(ex.getMessage());
+        }
+        new PhotoEditorAppp();
+    }
+}
